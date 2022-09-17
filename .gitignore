@@ -7,3 +7,4 @@ pnpm-debug.log*
 # dependencies
 /node_modules
 *.local
+package-lock.json

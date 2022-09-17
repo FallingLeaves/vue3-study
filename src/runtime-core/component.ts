@@ -14,7 +14,7 @@ export function setCurrentInstance(instance) {
 	currentInstance = instance;
 }
 
-export function createComponentInstance(vnode) {
+export function createComponentInstance(vnode, parent) {
 	// 返回 component 数据结构
 	const component = {
 		vnode,
@@ -23,6 +23,10 @@ export function createComponentInstance(vnode) {
 		props: {},
 		emit: () => {},
 		slots: {},
+		// 初始化的 provides 指向父级的 provides
+		provides: parent ? parent.provides : {},
+		// 挂载parent
+		parent,
 	};
 	// 传参
 	component.emit = emit.bind(null, component) as any;

@@ -1,0 +1,9 @@
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# dependencies
+/node_modules
+*.local

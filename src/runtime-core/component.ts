@@ -3,6 +3,7 @@ import { hasOwn } from "../shared";
 import { emit } from "./componentEmit";
 import { initProps } from "./componentProps";
 import { initSlots } from "./componentSlots";
+import { proxyRefs } from "../reactivity/ref";
 
 let currentInstance;
 
@@ -57,9 +58,11 @@ function setupStatefulComponent(instance, container) {
 	if (setup) {
 		setCurrentInstance(instance);
 		// 返回函数 作为组件的render  反之 是 setupState 注入到上下文中
-		const setupResult = setup(shallowReadonly(instance.props), {
-			emit: instance.emit,
-		});
+		const setupResult = proxyRefs(
+			setup(shallowReadonly(instance.props), {
+				emit: instance.emit,
+			})
+		);
 		setCurrentInstance(null);
 		handleSetupResult(instance, setupResult);
 	}

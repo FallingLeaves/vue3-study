@@ -35,3 +35,4 @@ export const createApp = (...args) => {
 };
 
 export * from "../runtime-core";
+export * from "../reactivity";

@@ -19,20 +19,17 @@ export default {
     function patchProp1() {
       // old !== new
       props.value.foo = 'new-foo'
-      console.log(this);
     }
 
     function patchProp2() {
       // new === undefined
       props.value.bar = undefined
-      console.log(this);
     }
 
     function patchProp3() {
       props.value = {
         bar: 'bar'
       }
-      console.log(this);
     }
 
     return {

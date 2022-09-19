@@ -6,7 +6,8 @@ import { createElement, patchProp, insert, effect } from "../runtime-dom";
 import { createAppAPI } from "./createApp";
 
 export function createRenderer(options) {
-	const { createElement, insert, patchProp, selector } = options;
+	const { createElement, insert, patchProp, selector, setElementText, remove } =
+		options;
 
 	function render(vnode, container, parent?) {
 		// 递归处理子节点
@@ -35,7 +36,7 @@ export function createRenderer(options) {
 
 	function processFragment(n2, container, parent) {
 		// 因为 fragment 就是用来处理 children 的
-		mountChildren(n2, container, parent);
+		mountChildren(n2.children, container, parent);
 	}
 
 	function processTextNode(vnode, container) {
@@ -51,19 +52,20 @@ export function createRenderer(options) {
 		// 分为 init 和 update 两种，这里先写 init
 		if (n1) {
 			// update 逻辑
-			patchElement(n1, n2, container);
+			patchElement(n1, n2, container, parent);
 		} else {
 			// init 逻辑
 			mountElement(n2, container, parent);
 		}
 	}
 
-	function patchElement(n1, n2, container) {
+	function patchElement(n1, n2, container, parent) {
 		console.log("更新");
 		const oldProps = n1.props || EMPTY_OBJ;
 		const newProps = n2.props || EMPTY_OBJ;
 		const el = (n2.el = n1.el);
 		patchProps(el, oldProps, newProps);
+		patchChildren(n1, n2, container, parent);
 	}
 
 	function patchProps(el, oldProps, newProps) {
@@ -92,6 +94,36 @@ export function createRenderer(options) {
 		}
 	}
 
+	function patchChildren(n1, n2, container, parent) {
+		const prevShapeFlag = n1.shapeFlags;
+		const shapeFlag = n2.shapeFlags;
+		const c1 = n1.children;
+		const c2 = n2.children;
+		// 文本
+		if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+			if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+				// 清空原有 children
+				unmountChildren(n1.children);
+			}
+			if (c1 !== c2) {
+				setElementText(n2.el, c2);
+			}
+		} else {
+			// 数组
+			if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+				setElementText(n1.el, "");
+				mountChildren(c2, container, parent);
+			}
+		}
+	}
+
+	function unmountChildren(children) {
+		for (let index = 0; index < children.length; index++) {
+			const child = children[index];
+			remove(child.el);
+		}
+	}
+
 	// vnode -> domEl
 	function mountElement(n2, container, parent) {
 		const { type: domElType, props, children, shapeFlags } = n2;
@@ -104,14 +136,14 @@ export function createRenderer(options) {
 		if (shapeFlags & ShapeFlags.TEXT_CHILDREN) {
 			domEl.textContent = children;
 		} else if (shapeFlags & ShapeFlags.ARRAY_CHILDREN) {
-			mountChildren(n2, domEl, parent);
+			mountChildren(n2.children, domEl, parent);
 		}
 
 		insert(domEl, container);
 	}
 
-	function mountChildren(n2, container, parent) {
-		n2.children.forEach((child) => {
+	function mountChildren(children, container, parent) {
+		children.forEach((child) => {
 			// 如果 children 是一个 array，就递归 patch
 			patch(null, child, container, parent);
 		});

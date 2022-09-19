@@ -27,11 +27,24 @@ export function selector(container) {
 	return document.querySelector(container);
 }
 
+export function remove(child) {
+	const parentElement = child.parentNode;
+	if (parentElement) {
+		parentElement.removeChild(child);
+	}
+}
+
+export function setElementText(el, text) {
+	el.textContent = text;
+}
+
 const renderer: any = createRenderer({
 	createElement,
 	patchProp,
 	insert,
 	selector,
+	remove,
+	setElementText,
 });
 
 export const createApp = (...args) => {

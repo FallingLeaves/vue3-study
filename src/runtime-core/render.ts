@@ -1,4 +1,4 @@
-import { isObject } from "../shared";
+import { isObject, EMPTY_OBJ } from "../shared";
 import { ShapeFlags } from "../shared/ShapeFlag";
 import { createComponentInstance, setupComponent } from "./component";
 import { Fragment, TextNode } from "./vnode";
@@ -54,21 +54,51 @@ export function createRenderer(options) {
 			patchElement(n1, n2, container);
 		} else {
 			// init 逻辑
-			mountElement(n1, n2, container, parent);
+			mountElement(n2, container, parent);
 		}
 	}
 
 	function patchElement(n1, n2, container) {
 		console.log("更新");
+		const oldProps = n1.props || EMPTY_OBJ;
+		const newProps = n2.props || EMPTY_OBJ;
+		const el = (n2.el = n1.el);
+		patchProps(el, oldProps, newProps);
+	}
+
+	function patchProps(el, oldProps, newProps) {
+		// old !== new 更新
+		// old 存在，new !== undefined 删除
+		// old 存在，new 不存在 删除
+		if (oldProps === newProps) {
+			return;
+		}
+		// old !== new
+		for (const propKey of Reflect.ownKeys(newProps)) {
+			const oldProp = oldProps[propKey];
+			const newProp = newProps[propKey];
+			// 新旧属性对比
+			if (oldProp !== newProp) {
+				patchProp(el, propKey, newProp, oldProp);
+			}
+		}
+		if (oldProps !== EMPTY_OBJ) {
+			// old 存在 new 不存在
+			for (const propKey of Reflect.ownKeys(oldProps)) {
+				if (!(propKey in oldProps)) {
+					patchProp(el, propKey, undefined, oldProps[propKey]);
+				}
+			}
+		}
 	}
 
 	// vnode -> domEl
-	function mountElement(n1, n2, container, parent) {
+	function mountElement(n2, container, parent) {
 		const { type: domElType, props, children, shapeFlags } = n2;
 		const domEl = (n2.el = createElement(domElType));
 
 		for (const prop in props) {
-			patchProp(domEl, prop, props);
+			patchProp(domEl, prop, props[prop]);
 		}
 
 		if (shapeFlags & ShapeFlags.TEXT_CHILDREN) {

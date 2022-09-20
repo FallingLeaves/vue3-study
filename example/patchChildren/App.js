@@ -4,6 +4,7 @@ import {
 import ArrayToText from "./ArrayToText.js"
 import TextToNewText from './TextToNewText.js'
 import TextToArray from './TextToArray.js'
+import ArrayToArray from './ArrayToArray.js'
 
 export default {
   setup() {},
@@ -12,7 +13,7 @@ export default {
       h('div', {}, 'main page'),
       // h(ArrayToText),
       // h(TextToNewText),
-      h(TextToArray),
+      h(ArrayToArray),
     ])
   }
 }

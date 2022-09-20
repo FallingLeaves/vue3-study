@@ -19,8 +19,9 @@ export function patchProp(el, prop: string, val, oldVal) {
 	}
 }
 
-export function insert(el, parent) {
-	parent.appendChild(el);
+export function insert(el, parent, anchor) {
+	// parent.appendChild(el);
+	parent.insertBefore(el, anchor || null);
 }
 
 export function selector(container) {

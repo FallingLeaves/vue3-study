@@ -44,8 +44,36 @@ export function createRenderer(options) {
 		container.appendChild(element);
 	}
 
+	function shouldUpdateComponent(prevVNode, nextVNode) {
+		const { props: prevProps } = prevVNode;
+		const { props: nextProps } = nextVNode;
+		for (const key in nextProps) {
+			if (nextProps[key] !== prevProps[key]) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	function processComponent(n1, n2, container, parent, anchor) {
-		mountComponent(n2, container, parent, anchor);
+		if (n1) {
+			// 更新
+			updateComponent(n1, n2);
+		} else {
+			// init
+			mountComponent(n2, container, parent, anchor);
+		}
+	}
+
+	function updateComponent(n1, n2) {
+		const instance = (n2.component = n1.component);
+		if (shouldUpdateComponent(n1, n2)) {
+			instance.next = n2;
+			instance.update();
+		} else {
+			n2.el = n1.el;
+			instance.vnode = n2;
+		}
 	}
 
 	function processElement(n1, n2, container, parent, anchor) {
@@ -305,17 +333,28 @@ export function createRenderer(options) {
 
 	function mountComponent(n2, container, parent, anchor) {
 		// 通过 vnode 获取组件实例
-		const instance = createComponentInstance(n2, parent);
+		const instance = (n2.component = createComponentInstance(n2, parent));
 
 		setupComponent(instance, container);
 		setupRenderEffect(instance, n2, container, anchor);
 	}
 
+	function updateComponentRenderer(instance, nextVNode) {
+		instance.vnode = nextVNode;
+		instance.props = nextVNode.props;
+		nextVNode = null;
+	}
+
 	function setupRenderEffect(instance, vnode, container, anchor) {
-		const { setupState, proxy } = instance;
-		effect(() => {
+		instance.update = effect(() => {
+			const { setupState, proxy, next, vnode } = instance;
 			// 根据 instance.isMounted 状态判断
 			if (instance.isMounted) {
+				if (next) {
+					// 更新组件 el props
+					next.el = vnode.el;
+					updateComponentRenderer(instance, next);
+				}
 				// update
 				const subTree = instance.render.call(proxy, proxy);
 				vnode.el = subTree.el;

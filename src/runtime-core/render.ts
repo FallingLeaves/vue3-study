@@ -4,6 +4,7 @@ import { createComponentInstance, setupComponent } from "./component";
 import { Fragment, TextNode } from "./vnode";
 import { effect } from "../reactivity";
 import { createAppAPI } from "./createApp";
+import { queueJobs } from "./scheduler";
 
 export function createRenderer(options) {
 	const { createElement, insert, patchProp, selector, setElementText, remove } =
@@ -346,31 +347,41 @@ export function createRenderer(options) {
 	}
 
 	function setupRenderEffect(instance, vnode, container, anchor) {
-		instance.update = effect(() => {
-			const { setupState, proxy, next, vnode } = instance;
-			// 根据 instance.isMounted 状态判断
-			if (instance.isMounted) {
-				if (next) {
-					// 更新组件 el props
-					next.el = vnode.el;
-					updateComponentRenderer(instance, next);
+		instance.update = effect(
+			() => {
+				const { setupState, proxy, next, vnode } = instance;
+				// 根据 instance.isMounted 状态判断
+				if (instance.isMounted) {
+					if (next) {
+						// 更新组件 el props
+						next.el = vnode.el;
+						updateComponentRenderer(instance, next);
+					}
+					// update
+					const subTree = instance.render.call(proxy, proxy);
+					vnode.el = subTree.el;
+					// 获取上一个 subTree
+					const preSubTree = instance.subTree;
+					instance.subTree = subTree;
+					console.log({ subTree, preSubTree });
+					patch(preSubTree, subTree, container, instance, anchor);
+				} else {
+					// init 逻辑
+					const subTree = (instance.subTree = instance.render.call(
+						proxy,
+						proxy
+					));
+					patch(null, subTree, container, instance, anchor);
+					vnode.el = subTree.el;
+					instance.isMounted = true;
 				}
-				// update
-				const subTree = instance.render.call(proxy, proxy);
-				vnode.el = subTree.el;
-				// 获取上一个 subTree
-				const preSubTree = instance.subTree;
-				instance.subTree = subTree;
-				console.log({ subTree, preSubTree });
-				patch(preSubTree, subTree, container, instance, anchor);
-			} else {
-				// init 逻辑
-				const subTree = (instance.subTree = instance.render.call(proxy, proxy));
-				patch(null, subTree, container, instance, anchor);
-				vnode.el = subTree.el;
-				instance.isMounted = true;
+			},
+			{
+				scheduler() {
+					queueJobs(instance.update);
+				},
 			}
-		});
+		);
 	}
 
 	return {

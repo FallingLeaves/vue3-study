@@ -21,6 +21,7 @@ describe("parse", () => {
 			expect(ast.children[0]).toStrictEqual({
 				type: NodeType.ELEMENT,
 				tag: "div",
+				children: [],
 			});
 		});
 
@@ -31,6 +32,33 @@ describe("parse", () => {
 				type: NodeType.TEXT,
 				content: "simple text",
 			});
+		});
+
+		test("happy path", () => {
+			const ast = baseParse("<div>hi,{{message}}</div>");
+			expect(ast.children[0]).toStrictEqual({
+				type: NodeType.ELEMENT,
+				tag: "div",
+				children: [
+					{
+						type: NodeType.TEXT,
+						content: "hi,",
+					},
+					{
+						type: NodeType.INTERPOLATION,
+						content: {
+							type: NodeType.SIMPLE_EXPRESSION,
+							content: "message",
+						},
+					},
+				],
+			});
+		});
+
+		test("should throw error when lack end tag", () => {
+			expect(() => {
+				baseParse("<div><span></div>");
+			}).toThrow();
 		});
 	});
 });

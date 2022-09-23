@@ -7,7 +7,7 @@ const enum TagType {
 
 export function baseParse(content: string) {
 	const context = createContext(content);
-	return createRoot(parseChildren(context));
+	return createRoot(parseChildren(context, []));
 }
 
 // 创建上下文
@@ -24,28 +24,60 @@ function createRoot(children) {
 	};
 }
 
-// 创建 children
-function parseChildren(context: { source: string }): any {
-	const nodes: any[] = [];
-	let node;
+// 结束条件 1. 遇到结束标签  2. context.source 没值了
+function isEnd(context: { source: string }, ancestors) {
 	const s = context.source;
-	if (s.startsWith("{{")) {
-		node = parseInterpolation(context);
-	} else if (s.startsWith("<") && /[a-z]/i.test(s[1])) {
-		// 第一位是 < 并且第二位是 a-z
-		node = parseElement(context);
+	if (s.startsWith("</")) {
+		for (let i = ancestors.length - 1; i >= 0; i--) {
+			const tag = ancestors[i].tag;
+			if (startsWidthEndTagOpen(context.source, tag)) {
+				return true;
+			}
+		}
 	}
-	// 如果上面两种无法解析，就是普通的 text 节点
-	if (!node) {
-		node = parseText(context);
+	return !s;
+}
+
+function startsWidthEndTagOpen(source, tag) {
+	const endTokenLength = "</".length;
+	return source.slice(endTokenLength, tag.length + endTokenLength) === tag;
+}
+
+// 创建 children
+function parseChildren(context: { source: string }, ancestors): any {
+	const nodes: any[] = [];
+	while (!isEnd(context, ancestors)) {
+		let node;
+		const s = context.source;
+		if (s.startsWith("{{")) {
+			node = parseInterpolation(context);
+		} else if (s.startsWith("<") && /[a-z]/i.test(s[1])) {
+			// 第一位是 < 并且第二位是 a-z
+			node = parseElement(context, ancestors);
+		}
+		// 如果上面两种无法解析，就是普通的 text 节点
+		if (!node) {
+			node = parseText(context);
+		}
+		nodes.push(node);
 	}
-	nodes.push(node);
-	return [node];
+
+	return nodes;
 }
 
 function parseText(context: { source: string }): any {
 	// 获取 content
-	const content = parseTextData(context, context.source.length);
+	// 如果 context.source 包含 {{ ，就以 {{ 作为结束点
+	const s = context.source;
+	const endTokens = ["<", "{{"];
+	let endIndex = s.length;
+	for (let i = 0; i < endTokens.length; i++) {
+		const index = s.indexOf(endTokens[i]);
+		if (index !== -1 && endIndex > index) {
+			endIndex = index;
+		}
+	}
+	const content = parseTextData(context, endIndex);
 	advanceBy(context, content.length);
 	return {
 		type: NodeType.TEXT,
@@ -54,14 +86,23 @@ function parseText(context: { source: string }): any {
 }
 
 //
-function parseElement(context: { source: string }): any {
-	const element = parseTag(context, TagType.START);
-	parseTag(context, TagType.END);
+function parseElement(context: { source: string }, ancestors): any {
+	const element: any = parseTag(context, TagType.START);
+	ancestors.push(element);
+	element.children = parseChildren(context, ancestors);
+	ancestors.pop();
+	if (startsWidthEndTagOpen(context.source, element.tag)) {
+		parseTag(context, TagType.END);
+	} else {
+		throw new Error(`不存在结束标签: ${element.tag}`);
+	}
 	return element;
 }
 
 //
 function parseTag(context: { source: string }, type: TagType) {
+	console.log(context);
+
 	const match = /^<\/?([a-z]*)/i.exec(context.source);
 	const tag = match![1];
 	advanceBy(context, match![0].length + 1);

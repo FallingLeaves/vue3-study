@@ -80,6 +80,14 @@ export function handleSetupResult(instance, setupResult) {
 function finishComponentSetup(instance) {
 	const component = instance.type;
 
+	// 有 compiler 没提供 render
+	if (!component.render && compiler) {
+		if (component.template) {
+			// 将 template 编译成 render
+			component.render = compiler(component.template);
+		}
+	}
+
 	if (!instance.render) {
 		instance.render = component.render;
 	}
@@ -106,3 +114,9 @@ export const componentPublicInstanceProxyHandlers = {
 		}
 	},
 };
+
+let compiler;
+
+export function registerCompiler(_compiler) {
+	compiler = _compiler;
+}

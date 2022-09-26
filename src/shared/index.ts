@@ -13,3 +13,13 @@ export function hasOwn(target, key) {
 }
 
 export const EMPTY_OBJ = {};
+
+export function isString(val: unknown): val is String {
+	return typeof val === "string";
+}
+
+export function isArray(val: unknown): val is Array<any> {
+	return Array.isArray(val);
+}
+
+export { toDisplayString } from "./toDisplayString";

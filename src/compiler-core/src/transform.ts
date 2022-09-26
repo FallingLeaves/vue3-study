@@ -12,9 +12,13 @@ export function transform(root, options = {}) {
 
 function traverseNode(node, context) {
 	const { nodeTransforms } = context;
+	const exitFns: any[] = [];
 	for (let i = 0; i < nodeTransforms.length; i++) {
 		const transform = nodeTransforms[i];
-		transform(node, context);
+		const exitFn = transform(node, context);
+		if (exitFn) {
+			exitFns.push(exitFn);
+		}
 	}
 	// 遍历树根据不同 node 的类型存入不同的 helper
 	switch (node.type) {
@@ -25,8 +29,13 @@ function traverseNode(node, context) {
 		case NodeType.ELEMENT:
 			// ROOT 和 ELEMENT 存在children
 			traverseChildren(node, context);
+			break;
 		default:
 			break;
+	}
+	let i = exitFns.length;
+	while (i--) {
+		exitFns[i]();
 	}
 }
 
@@ -52,5 +61,10 @@ function createTransformContext(root, options) {
 }
 
 function createRootCodegen(root) {
-	root.codegenNode = root.children[0];
+	const child = root.children[0];
+	if (child.type === NodeType.ELEMENT) {
+		root.codegenNode = child.codegenNode;
+	} else {
+		root.codegenNode = root.children[0];
+	}
 }

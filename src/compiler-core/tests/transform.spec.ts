@@ -1,4 +1,4 @@
-import { baseParse } from "../src";
+import { baseParse } from "../src/parse";
 import { NodeType } from "../src/ast";
 import { transform } from "../src/transform";
 
